@@ -1,0 +1,43 @@
+\documentclass{article}
+
+\begin{document}
+\title{Porting the Jacobi Code to OpenMP}
+\author{Adam Matheson \\
+Student Number: P 1757290}
+\date{\today}
+\maketitle
+
+\section{Introduction}
+\subsection{Methodology}
+After making a change, the program was re-profiled and the new run-time for matrices of orders 500, 1000, 2000 and 4000 recorded, averaged and rounded to an appropriate accuracy across three runs on BlueCrystal. Times are given in the format X/Y/Z for each matrix order respectively and are in seconds.
+
+Mention seven dwarves, look up libraries
+
+\subsection{Serial Optimisations}
+Include ones I didn't do
+
+\section{Parallelisation}
+
+\subsection{Performance Analysis}
+Theoretical limit
+Computation complexity
+Operational intensity
+Roofline
+STREAM benchmark
+Scaling
+\subsection{Baseline}
+Mention compiler and flags, they will be tested again after port
+\subsection{Adding Pragmas}
+parallel for
+look at toy code
+\subsection{Profiling}
+gperftools, tau
+\subsection{Cache coherency/false sharing}
+Reduction
+\subsection{Reprofiling, overhead of parallel}
+\subsection{Libraries, BLAS, NAG C}
+
+\section{Conclusion}
+\subsection{Going Further}
+
+\end{document} 
