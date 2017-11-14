@@ -1,7 +1,6 @@
 ## Introduction to High Performance Computing - Jacobi coursework 2
 
-This code is a parallel implementation the iterative Jacobi method to solve a system of linear equations. It is an extension and optimisation of the serial implementation available at https://github.com/UoB-HPC/intro-hpc-jacobi
-See the [Wikipedia page](https://en.wikipedia.org/wiki/Jacobi_method) for a full description of the Jacobi method.
+This code is a parallel implementation the iterative Jacobi method to solve a system of linear equations. It is an extension and optimisation of the serial implementation available at https://github.com/UoB-HPC/intro-hpc-jacobi. See the [Wikipedia page](https://en.wikipedia.org/wiki/Jacobi_method) for a full description of the Jacobi method.
 
 ### Compiling and running
 
@@ -25,9 +24,7 @@ Modify the `jacobi.job` file to change the arguments passed to the program.
 
 Here are the runtimes that we achieve with the starting code for a few different matrix sizes.
 
-| Matrix size | Solver runtime | Iterations | Solution error |
-| ----------- | -------------- | ---------- | -------------- |
-|     500     |  1.48 seconds  |    1465    |    0.02495     |
-|    1000     |  10.9 seconds  |    2957    |    0.05005     |
-|    2000     |   130 seconds  |    5479    |    0.09998     |
-|    4000     |  1180 seconds  |   10040    |    0.1999      |
+| Matrix size | Solver runtime |
+| ----------- | -------------- |
+|    2000     |    <1 second   |
+|    4000     |   <25 seconds  |
