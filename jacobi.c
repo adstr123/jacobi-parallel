@@ -1,4 +1,4 @@
-//
+/* README
 // Implementation of the iterative Jacobi method.
 //
 // Given a known, diagonally dominant matrix A and a known vector b, we aim to
@@ -16,7 +16,7 @@
 //
 // More information:
 // -> https://en.wikipedia.org/wiki/Jacobi_method
-//
+*/
 
 #include <math.h>
 #include <stdio.h>
@@ -54,46 +54,33 @@ int run(float *A, float *b, float *x, float *xtmp)
   itr = 0;
   do
   {
-    // Perfom Jacobi iteration
-    /* for (row = 0; row < N; row++) */
-    /* { */
-    /*   dot = 0.0; */
-    /*   for (col = 0; col < N; col++) */
-    /*   { */
-    /*     if (row != col) */
-    /* 	{ */
-    /*       dot += A[row + col*N] * x[col]; */
-    /* 	} */
-    /*   } */
-    /*   xtmp[row] = (b[row] - dot) / A[row + row*N]; */
-    /* } */
-
-    // Perform Jacobi iteration version 2.0
+    // Perform Jacobi iteration (version 2.0, init & access matching)
     for (row = 0; row < N; row++)
     {
       dot = 0.0;
       for (col = 0; col < N; col++)
-      {
-    	if (row != col)
-    	{
-    	  dot += A[row*N + col] * x[col];
-    	}
+			{
+				if (row != col)
+				{
+					dot += A[row*N + col] * x[col];
+				}
       }
       xtmp[row] = (b[row] - dot) / A[row*N + row];
     }
 
-    // DEBUG print xtmp array
-    /* printf("Iteration: %d\n", itr); */
-    /* printf("xtmp:"); */
-    /* for (int row = 0; row < N; row++) */
-    /* { */
-    /*   for (int col = 0; col < N; col++) */
-    /*   { */
-    /* 	printf("%f ", xtmp[row*N + col]); */
-    /*   } */
-    /*   printf("\n"); */
-    /* } */
-
+		/* DEBUG print xtmp array
+	  printf("Iteration: %d\n", itr);
+    printf("xtmp:");
+    for (int row = 0; row < N; row++)
+		{
+			for (int col = 0; col < N; col++)
+			{
+				printf("%f ", xtmp[row*N + col]);
+      }
+      printf("\n");
+    }
+		*/
+	
     // Swap pointers
     ptrtmp = x;
     x      = xtmp;
@@ -119,7 +106,6 @@ int main(int argc, char *argv[])
   parse_arguments(argc, argv);
 
   float *A    = malloc(N*N*sizeof(float));
-  //double *Aorg = malloc(N*N*sizeof(double));
   float *b    = malloc(N*sizeof(float));
   float *x    = malloc(N*sizeof(float));
   float *xtmp = malloc(N*sizeof(float));
@@ -131,22 +117,6 @@ int main(int argc, char *argv[])
   printf(SEPARATOR);
 
   double total_start = get_timestamp();
-
-  //Initialize data
-  /* srand(SEED); */
-  /* for (int row = 0; row < N; row++) */
-  /* { */
-  /*   double rowsum = 0.0; */
-  /*   for (int col = 0; col < N; col++) */
-  /*   { */
-  /*     double value = rand()/(double)RAND_MAX; */
-  /*     A[row + col*N] = value; */
-  /*     rowsum += value; */
-  /*   } */
-  /*   A[row + row*N] += rowsum; */
-  /*   b[row] = rand()/(double)RAND_MAX; */
-  /*   x[row] = 0.0; */
-  /* } */
 
   // Initialize data version 2.0
   srand(SEED);
@@ -164,42 +134,17 @@ int main(int argc, char *argv[])
     x[col] = 0.0;
   }
 
-  // DEBUG print fresh array
-  /* printf("BEFORE TRANSPOSE:\n"); */
-  /* for (int row = 0; row < N; row++) */
-  /* { */
-  /*   for (int col = 0; col < N; col++) */
-  /*   { */
-  /* 	printf("%f ", A[row*N + col]); */
-  /*   } */
-  /*   printf("\n"); */
-  /* } */
-
-  // Transpose array
-  /* for (int i = 0; i < N; ++i) */
-  /* { */
-  /*   for (int j = i+1; j < N; ++j) */
-  /*   { */
-  /*     for (int k = 0; k < N*N; k++) */
-  /*     { */
-  /* 	Aorg[k] = A[k]; */
-  /*     } */
-
-  /*     A[N*i + j] = A[N*j + i]; */
-  /*     A[N*j + i] = Aorg[N*i + j]; */
-  /*   } */
-  /* } */
-
-  // DEBUG print transposed array
-  /* printf("AFTER TRANSPOSE:\n"); */
-  /* for (int row = 0; row < N; row++) */
-  /* { */
-  /*   for (int col = 0; col < N; col++) */
-  /*   { */
-  /* 	printf("%f ", A[row*N + col]); */
-  /*   } */
-  /*   printf("\n"); */
-  /* } */
+  /* DEBUG print fresh array
+	printf("Newly initialised matrix:\n")
+  for (int row = 0; row < N; row++)
+  {
+		for (int col = 0; col < N; col++)
+		{
+			printf("%f ", A[row*N + col]);
+		}
+		printf("\n");
+	}
+	*/
 
   // Run Jacobi solver
   double solve_start = get_timestamp();
