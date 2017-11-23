@@ -8,36 +8,139 @@ Student Number: P 1757290}
 \maketitle
 
 \section{Introduction}
-\subsection{Methodology}
-After making a change, the program was re-profiled and the new run-time for matrices of orders 500, 1000, 2000 and 4000 recorded, averaged and rounded to an appropriate accuracy across three runs on BlueCrystal. Times are given in the format X/Y/Z for each matrix order respectively and are in seconds.
+The trend in modern HPC is clear: parallelization is the way
+forward. In every aspect, performance is being found through
+concurrent execution; be that via vectorisation, multi-core CPUs or
+GPGPU computing. Despite new challenges arising from this new
+paradigm, the benefits on offer make this new way of programming more
+than worth the effort.
 
-Mention seven dwarves, look up libraries
+To illustrate the potential performance gains on offer, what follows
+is a walkthrough of a successful attempt to parallelize optimised
+serial code running the Jacobi algorithm for solving a set of linear
+equations, by porting it to OpenMP.
+
+\subsection{Methodology} After making a change, the program was
+re-profiled and the new run-time for matrices of orders 500, 1000,
+2000 and 4000 recorded, averaged and rounded to an appropriate
+accuracy across three runs on BlueCrystal. Times are given in the
+format W/X/Y/Z for each matrix order respectively and are in
+seconds. For convenience, where significant performance gains were
+made, improvements are described in terms of ``\(t\)X times faster''
+(where \(t\) is the speedup); but smaller improvements are described
+in terms of percentages.
 
 \subsection{Serial Optimisations}
-Include ones I didn't do
+Prior to the parallelization described in the following sections, a
+number of basic changes and serial optimisations were
+explored. Specifically, these were (in order, performance gain in
+reference to times after previous optimisation):
+
+\begin{enumerate}
+\item Change compiler from GNU (gcc 4.8.5) to Intel (icc 18.0.0): ~3X
+  faster
+\item Ensure data order and data access pattern are the same (column
+  vs. row traversal): ~3.5X faster
+\item Change data type from \texttt{double} to \texttt{float}:
+  ~5\%-10\% faster
+\item Enable \texttt{-O3} compiler optimisation flag: ~15\% faster
+\item Vectorisation check using \texttt{-qopt-report}
+\item Attempted loop fusion (failed: introduced high error rate)
+\end{enumerate}
+
+\subsubsection{Further Serial Optimisations}
+In addition to the above, further potential optimisations became
+apparent after submission and were dutifully included in the serial
+code before embarking on this parallelization endeavour:
+
+\begin{enumerate}
+\item Move branching code \texttt{if (row != col)} in \texttt{run()}
+  method to outer loop
+\end{enumerate}
 
 \section{Parallelisation}
 
-\subsection{Performance Analysis}
-Theoretical limit
-Computation complexity
-Operational intensity
-Roofline
-STREAM benchmark
-Scaling
 \subsection{Baseline}
-Mention compiler and flags, they will be tested again after port
+To judge relative performance improvements, we require a baseline
+runtime. The serial code with the above optimisations and changes
+(including continuing with \texttt{icc} and \texttt{-O3} optimisation)
+ran in W/X/Y/Z.
+
+\subsection{Performance Analysis}
+Relative performance improvements are good, but how does a programmer
+know if he is really running fast code? What is ``fast''? We require a
+way to measure absolute performance gains, against a theoretical
+maximum performance. We can use the concept of ``operational
+intensity'' to produce a few approximations of a theoretical maximum
+performance.
+
+\subsubsection{Computational Complexity}
+It is useful to first understand the computational complexity (CC) of
+the Jacobi code in terms of ``big O'' notation. The key part of the
+Jacobi algorithm processes a matrix, nestling a \ldots therefore the
+CC is \ldots
+
+\subsubsection{Operational Intensity}
+We can use the CC to help work out the operational intensity
+(OI). This is a measure that can be described as ``operations per byte
+of memory traffic''. Whereas CC only accounts for compute cost, OI can
+also describe the relationship between compute and memory cost.
+
+Looking at the Jacobi code and its CC, we can also identify the memory
+operations required during matrix processing. Combining this with the
+CC gives OI of \ldots
+
+\subsubsection{STREAM Benchmark}
+Another way of measuring absolute performance is with the STREAM
+benchmark. This measures the sustainable memory bandwidth for four
+long vector operations on specific hardware. Knowing the result of
+this benchmark for BlueCrystal can tell us how close we are to
+achieving peak memory bandwidth.
+
+Running STREAM on BlueCrystal results in \ldots
+
+\subsubsection{Roofline Model}
+Now the OI and peak memory bandwidth can be used in a roofline
+model. This graph provides a visual means of identifying optimal
+performance in terms of a trade-off between compute and memory
+cost. We can also identify where the current code is under the
+``roof'' of the graph to determine whether the code is compute-bound
+or memory-bound, helping to focus optimisation and parallelization
+efforts. Here is the roofline model for Jacobi running on BlueCrystal:
+
+\ldots
+
 \subsection{Adding Pragmas}
-parallel for
+parallel for loop
 look at toy code
+
 \subsection{Profiling}
 gperftools, tau
+
 \subsection{Cache coherency/false sharing}
 Reduction
-\subsection{Reprofiling, overhead of parallel}
+
+\subsection{Reprofiling}
+Overhead of parallel
+
 \subsection{Libraries, BLAS, NAG C}
+Seven dwarves
+
+\subsection{Re-testing compiler}
+Sometimes compiler optimisations can be arbitrary, worth checking flags again
 
 \section{Conclusion}
-\subsection{Going Further}
+\subsection{Going Further - Scaling}
+One final useful thing to know is how well a piece of code will scale
+with further parallelization. Testing the Jacobi algorithm on a growing number of
+cores results in the following graph:
+
+\ldots
+
+Which means the scaling is type\ldots
+
+So can be scaled more/cannot be scaled that well
+
+Amdahl's Law Gustavson's Law
 
 \end{document} 
