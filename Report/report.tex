@@ -1,5 +1,35 @@
 \documentclass{article}
 \usepackage{nips15submit_e}
+\usepackage{graphicx}
+\usepackage{caption}
+\usepackage{listings}
+\usepackage{color}
+
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\footnotesize,
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    keepspaces=true,
+    numbers=left,
+    numbersep=5pt,
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    tabsize=2
+}
+
+\lstset{style=mystyle}
 
 \begin{document}
 \title{Porting the Jacobi Code to OpenMP \\
@@ -10,9 +40,9 @@
 The trend in modern HPC is clear: parallelization is the way
 forward. In every aspect, performance is being found through
 concurrent execution; be that via vectorisation, multi-core CPUs or
-GPGPU computing. Despite new challenges arising from this new
-paradigm, the benefits on offer make this new way of programming more
-than worth the effort.
+even GPGPU computing. Despite programming challenges arising from this
+new paradigm, the benefits on offer make it more than worth the
+effort.
 
 To illustrate the potential performance gains on offer, what follows
 is a walkthrough of a successful attempt to parallelize optimised
@@ -26,29 +56,29 @@ accuracy across three runs on BlueCrystal. Times are given in the
 format W/X/Y/Z for each matrix order respectively and are in
 seconds. For convenience, where significant performance gains were
 made, improvements are described in terms of ``\(t\)X times faster''
-(where \(t\) is the speedup); but smaller improvements are described
-in terms of percentages.
+(where \(t\) is the speedup); whereas smaller improvements are
+described in terms of percentages.
 
 \subsection{Serial Optimisations}
-Prior to the parallelization described in the following sections, a
-number of basic changes and serial optimisations were
-explored. Specifically, these were (in order, performance gain in
-reference to times after previous optimisation):
+Prior to parallelization, a number of basic changes and optimisations
+of the serial code were explored. In order of implementation, with
+performance gain relative to the preceeding optimisation's times,
+these were:
 
 \begin{enumerate}
-\item Change compiler from GNU (gcc 4.8.5) to Intel (icc 18.0.0): ~3X
-  faster
+\item Change compiler from GNU (gcc 4.8.5) to Intel (icc 18.0.0): \textbf{\~3X
+  faster}
 \item Ensure data order and data access pattern are the same (column
-  vs. row traversal): ~3.5X faster
+  vs. row traversal): \textbf{\~3.5X faster}
 \item Change data type from \texttt{double} to \texttt{float}:
-  ~5\%-10\% faster
-\item Enable \texttt{-O3} compiler optimisation flag: ~15\% faster
+  \textbf{\~5\%-10\% faster}
+\item Enable \texttt{-O3} compiler optimisation flag: \textbf{\~15\% faster}
 \item Vectorisation check using \texttt{-qopt-report}
-\item Attempted loop fusion (failed: introduced high error rate)
 \end{enumerate}
 
 These optimisations resulted in runtimes at submission of
-0.148/1.107/7.879/72.155.
+0.148/1.107/7.879/72.155 (down from approximately 1.5/10/130/1180 for
+unoptimised code).
 
 \subsubsection{Further Serial Optimisations}
 In addition to the above, one further optimisation became apparent
@@ -56,67 +86,115 @@ after submission and was dutifully included in the serial code before
 embarking on this parallelization endeavour. The branching code
 \texttt{if (row != col)} in the \texttt{run()} method was removed
 entirely and instead, a looping technique that avoids irerating on
-that particular matrix element altogether was employed.
+that particular matrix element altogether was employed, thus better
+facilitating pipelining and vectorisation.
 
 \section{Parallelisation}
 
 \subsection{Baseline}
-To judge relative performance improvements, we require a baseline
-runtime. The serial code with the above optimisations and changes from
-the first submission (continuing with \texttt{icc} and \texttt{-O3}
-optimisation), including the one further optimisation, ran in
-0.137/0.994/6.891/66.731.
+To judge relative performance improvements, a baseline runtime is
+required. The serial code with the above optimisations and changes
+from the first submission (continuing with \texttt{icc} and
+\texttt{-O3} optimisation), including the one further optimisation,
+produced runtimes of 0.137/0.994/6.891/66.731.
 
 \subsection{Performance Analysis}
 Relative performance improvements are good, but how does a programmer
-know if he is really running fast code? What is ``fast''? We require a
-way to measure absolute performance gains, against a theoretical
-maximum performance. We can use the concept of ``operational
-intensity'' to produce a few approximations of a theoretical maximum
-performance.
+know if he is really running fast code? What exactly is ``fast''?
+Measuring absolute performance gains against a theoretical maximum
+performance can help answer this. The concept of ``operational
+intensity'' can be used to produce a few illustrations of
+theoretical maximum performance.
 
 \subsubsection{Computational Complexity}
 It is useful to first understand the computational complexity (CC) of
 the Jacobi code in terms of ``big O'' notation. The key part of the
-Jacobi algorithm processes a matrix, nesting a \texttt{for} loop for
-processing columns inside another \texttt{for} loop for each row. If
-each of these takes \(O(n)\) where \(n\) is the matrix order, then the
-CC is \(O(n^2)\). This means it scales exponentially with the size of
-the data set.
+Jacobi algorithm processes a matrix, nesting two adjacent \texttt{for}
+loops that process matrix columns inside another \texttt{for} loop,
+processing each row:
+
+\begin{lstlisting}[language=C]
+// Perform Jacobi iteration
+for (row = 0; row < N; row++)
+{
+  dot = 0.0;
+  skip_count = N;
+
+  for (col = 0; col < row; col++)
+  {
+    dot += A[row*N + col] * x[col];
+  }
+  // Skip matrix element where col==row
+  for (col = (row + 1); col < N; col++)
+  {
+    dot += A[row*N + col] * x[col];
+  }
+
+  xtmp[row] = (b[row] - dot) / A[row*N + row];
+}
+\end{lstlisting}
+
+If each of these loops takes \(O(n)\) where \(n\) is the matrix
+order, then the CC is \(O(n^2)\). This means the computational
+requirement scales exponentially with the size of the matrix order.
 
 \subsubsection{Operational Intensity}
-We can use the CC to help work out the operational intensity
-(OI). This is a measure that can be described as ``operations per byte
-of memory traffic''. Whereas CC only accounts for compute cost, OI can
-describe the relationship between compute and memory cost.
+Whereas CC only accounts for compute cost, operational intensity (OI)
+can describe the relationship between compute and memory cost. This is
+a measure that can be described as ``operations per byte of memory
+traffic''.
 
-Looking at the Jacobi code, we can also identify the memory operations
-required during matrix processing. Working through the solver code
-block systematically, there are 8 bytes loaded/stored, and there are 2
-operations executed, giving an OI of 2/8 or 0.25.
+By simply looking at the solver portion of the Jacobi code, we can
+identify the memory operations required during matrix
+processing. Working through the code block systematically, there are 8
+bytes loaded/stored, and there are 2 operations executed, giving an OI
+of 2/8 or 0.25.
 
 \subsubsection{STREAM Benchmark}
 Another way of measuring absolute performance is with the STREAM
-benchmark. This measures the sustainable memory bandwidth for four
-long vector operations on specific hardware. Knowing the result of
-this benchmark for BlueCrystal can tell us how close we are to
-achieving peak memory bandwidth.
+benchmark. This measures the peak sustainable memory bandwidth on
+specific hardware. Knowing the result of this benchmark for
+BlueCrystal can tell us how close we are to achieving peak memory
+bandwidth.
 
-Running STREAM on BlueCrystal results in \ldots
+STREAM benchmark results available from Simon McIntosh-Smith for an
+Intel Xeon CPU E5-2670 (SB) 8-cores gave the following results:
+
+\begin{center}
+  \begin{tabular}{|l|l|}
+    \hline
+    \textbf{Memory Level} & \textbf{Bandwidth in GB/s} \\
+    L1 cache & 776 \\
+    L2 cache & 390 \\
+    L3 cache & 209 \\
+    DRAM & 34.4 \\
+    \hline
+  \end{tabular}
+\end{center}
 
 \subsubsection{Roofline Model}
 Now the OI and peak memory bandwidth can be used in a roofline
 model. This graph provides a visual means of identifying optimal
 performance in terms of a trade-off between compute and memory
-cost. We can also identify where the current code is under the
-``roof'' of the graph, to determine whether the code is compute-bound
-or memory-bound, helping to focus optimisation and parallelization
-efforts. Here is the roofline model for BlueCrystal:
+cost. We can also identify where the code is under the ``roof'' of the
+graph, to determine whether the code is compute-bound or memory-bound,
+helping to focus optimisation and parallelization efforts.
 
-\ldots
+\begin{figure}
+\captionsetup{justification=centering}
+\centering
+\includegraphics[scale=0.4]{roofline}
+\caption{Cache-aware roofline model for a BCP3 CPU}
+\end{figure}
 
-Taking the Jacobi OI of 0.25, it is clear this figure lies way to the
-left of the \(x\)-axis and is extremely memory bandwidth-bound.
+Figure 1 shows a cache-aware roofline model for a BlueCrystal
+CPU. Taking the Jacobi OI of 0.25, it is clear this figure lies way
+below the peak performance point with reference to DRAM. However it is
+not particularly far from the peak performance mark of the L1
+cache. If code modifications took place and the Jacobi OI became above
+0.4, and if the code was hitting the L1 cache the majority of the
+time, this figure would become relevant because then, the code would
+change to be compute bound!
 
 \subsection{Adding Pragmas}
 Now on to the parallelisation itself. The most obvious thing to do
@@ -152,8 +230,8 @@ management. Because the code is now more complex and things like
 memory conflicts and thread lifecycles must be managed, the
 performance gain is not directly related to the increase in processing power.
 
-\subsection{Libraries, BLAS, NAG C}
-According to the ``seven dwarves'' paper (REFERENCE), the vast
+\subsection{Libraries}
+According to the ``seven dwarves'' paper, the vast
 majority of code executed in HPC falls into one of seven
 categories. This concept is useful because knwoing which of the
 ``dwarves'' a piece of code is, may mean that historically, similar
@@ -185,10 +263,16 @@ parallelisation to check behaviour:
 \section{Conclusion}
 Overall,
 
-\subsection{Going Further - Scaling}
+\subsection{Going Further}
+In terms of further optimisation, loop fusion was attempted in the
+Jacobi solver, to combine matrix processing with convergence
+check. However this introduced a high error rate (probably
+bug). Successfully implementing this could realise further performance
+gains.
+
 One final useful thing to know is how well a piece of code will scale
-with further parallelization. Testing the Jacobi algorithm on a growing number of
-cores results in the following graph:
+with further parallelization. Testing the Jacobi algorithm on a
+growing number of cores results in the following graph:
 
 \ldots
 

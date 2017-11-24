@@ -5,6 +5,10 @@
     "latex2e"
     "article"
     "art10"
-    "nips15submit_e"))
+    "nips15submit_e"
+    "graphicx"
+    "caption"
+    "listings"
+    "color"))
  :latex)
 
