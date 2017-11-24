@@ -32,7 +32,6 @@ static int SEED;
 static double CONVERGENCE_THRESHOLD;
 
 #define SEPARATOR "------------------------------------\n"
-#define NUM_THREADS 4
 
 // Return the current time in seconds since the Epoch
 double get_timestamp();
@@ -51,8 +50,6 @@ int run(float *A, float *b, float *x, float *xtmp)
   double diff;
   double sqdiff;
   float *ptrtmp;
-
-  omp_set_num_threads(NUM_THREADS);
 
   // Loop until converged or maximum iterations reached
   itr = 0;

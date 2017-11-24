@@ -5,7 +5,7 @@
 #PBS -joe
 #PBS -m a
 #PBS -q teaching
-#PBS -l nodes=1:ppn=1
+#PBS -l nodes=1:ppn=16
 #PBS -l walltime=00:10:00
 
 cd $PBS_O_WORKDIR
@@ -15,4 +15,4 @@ echo Time is `date`
 echo Directory is `pwd`
 echo PBS job ID is $PBS_JOBID
 
-./jacobi --norder 1000 --iterations 20000
+./jacobi --norder 2000 --iterations 20000

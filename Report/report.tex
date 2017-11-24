@@ -109,8 +109,9 @@ theoretical maximum performance.
 \subsubsection{Computational Complexity}
 It is useful to first understand the computational complexity (CC) of
 the Jacobi code in terms of ``big O'' notation. The key part of the
-Jacobi algorithm processes a matrix, nesting two adjacent \texttt{for}
-loops that process matrix columns inside another \texttt{for} loop,
+Jacobi algorithm (henceforth referred to as the ``solver'' code
+block'') processes a matrix, nesting two adjacent \texttt{for} loops
+that process matrix columns inside another \texttt{for} loop,
 processing each row:
 
 \begin{lstlisting}[language=C]
@@ -145,10 +146,10 @@ a measure that can be described as ``operations per byte of memory
 traffic''.
 
 By simply looking at the solver portion of the Jacobi code, we can
-identify the memory operations required during matrix
-processing. Working through the code block systematically, there are 8
-bytes loaded/stored, and there are 2 operations executed, giving an OI
-of 2/8 or 0.25.
+identify the memory operations required for the solver. Working
+through the solver block systematically, there are 8 bytes
+loaded/stored, and there are 2 operations executed, giving an OI of
+2/8 or 0.25.
 
 \subsubsection{STREAM Benchmark}
 Another way of measuring absolute performance is with the STREAM
@@ -198,16 +199,38 @@ change to be compute bound!
 
 \subsection{Adding Pragmas}
 Now on to the parallelisation itself. The most obvious thing to do
-initially is to turn the \texttt{for} loops into parallel \texttt{for}
-loops. This can be done with the pragma \ldots
+initially is to turn the hungriest \texttt{for} loops into parallel \texttt{for}
+loops. From previous profiling during serial optimisation, it is known
+that the outer loop in the solver code block occupies most of the
+runtime.
 
-Several loops are available for parallelisation: \ldots
+To parallelise this loop in the simplest way as a proof of concept,
+\texttt{\#pragma omp parallel for shared(xtmp) private(dot,
+  skip\_count)} is used just before the loop beginning on line 2 of
+the above listing. A critical section is added on line 16 with
+\texttt{\#pragma omp critical}. This has the effect of spawning a team
+of threads at that point, but protects the \texttt{dot} and
+\texttt{skip\_count} variables with a mutex to avoid a race condition.
 
-\subsection{Profiling}
-To check the results of adding these OpenMP pragmas, profiling is
-necessary to get a better idea of exactly what the code is
-doing. \texttt{Tau} is a good profiler for multi-threaded code. The
-\texttt{Tau} output for the code after a quick and dirty
+Several loops are available for parallelisation. Firstly, the adjacent
+inner for loops in the solver block. However, because these are nested
+loops, using the \texttt{pragma} would try to create a team of threads
+for each thread in the outer loop; a ``team of teams''. In reality
+this would result in just one thread being used though, due to the
+simplicity of the computation in the inner loop, and would therefore
+add unnecessary overhead. Additionally, for loops such as the
+convergence check and the data initialisation code block in
+\texttt{main()} could be parallelised, however since the massive
+majority of the run time happens inside the solver block, introducing
+parallelisation elsewhere would likely introduce unnecessary overhead too.
+
+\subsection{Performance Test and Profiling}
+After enabling the code to run on multiple cores, runtimes were
+checked. They were W/X/Y/Z.
+
+Profiling is necessary to get a better idea of exactly what the code
+is doing. \texttt{Tau} is a good profiler for multi-threaded code. The
+\texttt{Tau} output for the code after the quick and dirty
 parallelisation is:
 
 \ldots
