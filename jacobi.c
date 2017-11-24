@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/time.h>
+#include <omp.h>
 //#include </usr/local/include/gperftools/profiler.h>
 
 static int N;
@@ -31,6 +32,7 @@ static int SEED;
 static double CONVERGENCE_THRESHOLD;
 
 #define SEPARATOR "------------------------------------\n"
+#define NUM_THREADS 4
 
 // Return the current time in seconds since the Epoch
 double get_timestamp();
@@ -50,11 +52,14 @@ int run(float *A, float *b, float *x, float *xtmp)
   double sqdiff;
   float *ptrtmp;
 
+  omp_set_num_threads(NUM_THREADS);
+
   // Loop until converged or maximum iterations reached
   itr = 0;
   do
   {
     // Perform Jacobi iteration (version 2.0, init & access matching)
+#pragma omp parallel for shared(xtmp) private(dot, skip_count)
     for (row = 0; row < N; row++)
     {
       dot = 0.0;
@@ -69,22 +74,9 @@ int run(float *A, float *b, float *x, float *xtmp)
       {
 	dot += A[row*N + col] * x[col];
       }
-
+#pragma omp critical
       xtmp[row] = (b[row] - dot) / A[row*N + row];
     }
-
-    /* DEBUG print xtmp array
-    printf("Iteration: %d\n", itr);
-    printf("xtmp:");
-    for (int row = 0; row < N; row++)
-    {
-      for (int col = 0; col < N; col++)
-      {
-	printf("%f ", xtmp[row*N + col]);
-      }
-      printf("\n");
-    }
-    */
 	
     // Swap pointers
     ptrtmp = x;
@@ -97,7 +89,7 @@ int run(float *A, float *b, float *x, float *xtmp)
     {
       diff    = xtmp[row] - x[row];
       sqdiff += diff * diff;
-    }x
+    }
 
     itr++;
   } while ((itr < MAX_ITERATIONS) && (sqrt(sqdiff) > CONVERGENCE_THRESHOLD));
