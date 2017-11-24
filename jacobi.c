@@ -59,18 +59,12 @@ int run(float *A, float *b, float *x, float *xtmp)
     {
       dot = 0.0;
       skip_count = N;
-      /*for (col = 0; col < N; col++)
-      {
-	if (row != col)
-	{
-	  dot += A[row*N + col] * x[col];
-	}
-      }*/
 
       for (col = 0; col < row; col++)
       {
 	dot += A[row*N + col] * x[col];
       }
+      // Skip matrix element where col==row
       for (col = (row + 1); col < N; col++)
       {
 	dot += A[row*N + col] * x[col];
@@ -103,7 +97,7 @@ int run(float *A, float *b, float *x, float *xtmp)
     {
       diff    = xtmp[row] - x[row];
       sqdiff += diff * diff;
-    }
+    }x
 
     itr++;
   } while ((itr < MAX_ITERATIONS) && (sqrt(sqdiff) > CONVERGENCE_THRESHOLD));

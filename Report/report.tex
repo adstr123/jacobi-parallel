@@ -1,10 +1,9 @@
 \documentclass{article}
+\usepackage{nips15submit_e}
 
 \begin{document}
-\title{Porting the Jacobi Code to OpenMP}
-\author{Adam Matheson \\
-Student Number: P 1757290}
-\date{\today}
+\title{Porting the Jacobi Code to OpenMP \\
+{\large Introduction to High Performance Computing COMS30005}}
 \maketitle
 
 \section{Introduction}
@@ -48,25 +47,25 @@ reference to times after previous optimisation):
 \item Attempted loop fusion (failed: introduced high error rate)
 \end{enumerate}
 
+These optimisations resulted in runtimes at submission of
+0.148/1.107/7.879/72.155.
+
 \subsubsection{Further Serial Optimisations}
-In addition to the above, further potential optimisations became
-apparent after submission and were dutifully included in the serial
-code before embarking on this parallelization endeavour:
-
-\begin{enumerate}
-\item Move branching code \texttt{if (row != col)} in \texttt{run()}
-  method to outer loop
-\end{enumerate}
-
-These originally non-included optimisations resulted in a reduction of the runtime from 0.148/1.107/7.879/72.155 when only using my original submission's optimisations, to W/X/Y/Z.
+In addition to the above, one further optimisation became apparent
+after submission and was dutifully included in the serial code before
+embarking on this parallelization endeavour. The branching code
+\texttt{if (row != col)} in the \texttt{run()} method was removed
+entirely and instead, a looping technique that avoids irerating on
+that particular matrix element altogether was employed.
 
 \section{Parallelisation}
 
 \subsection{Baseline}
 To judge relative performance improvements, we require a baseline
-runtime. The serial code with the above optimisations and changes
-(including continuing with \texttt{icc} and \texttt{-O3} optimisation)
-ran in W/X/Y/Z.
+runtime. The serial code with the above optimisations and changes from
+the first submission (continuing with \texttt{icc} and \texttt{-O3}
+optimisation), including the one further optimisation, ran in
+0.137/0.994/6.891/66.731.
 
 \subsection{Performance Analysis}
 Relative performance improvements are good, but how does a programmer
@@ -79,18 +78,22 @@ performance.
 \subsubsection{Computational Complexity}
 It is useful to first understand the computational complexity (CC) of
 the Jacobi code in terms of ``big O'' notation. The key part of the
-Jacobi algorithm processes a matrix, nestling a \ldots therefore the
-CC is \ldots
+Jacobi algorithm processes a matrix, nesting a \texttt{for} loop for
+processing columns inside another \texttt{for} loop for each row. If
+each of these takes \(O(n)\) where \(n\) is the matrix order, then the
+CC is \(O(n^2)\). This means it scales exponentially with the size of
+the data set.
 
 \subsubsection{Operational Intensity}
 We can use the CC to help work out the operational intensity
 (OI). This is a measure that can be described as ``operations per byte
 of memory traffic''. Whereas CC only accounts for compute cost, OI can
-also describe the relationship between compute and memory cost.
+describe the relationship between compute and memory cost.
 
-Looking at the Jacobi code and its CC, we can also identify the memory
-operations required during matrix processing. Combining this with the
-CC gives OI of \ldots
+Looking at the Jacobi code, we can also identify the memory operations
+required during matrix processing. Working through the solver code
+block systematically, there are 8 bytes loaded/stored, and there are 2
+operations executed, giving an OI of 2/8 or 0.25.
 
 \subsubsection{STREAM Benchmark}
 Another way of measuring absolute performance is with the STREAM
@@ -106,32 +109,82 @@ Now the OI and peak memory bandwidth can be used in a roofline
 model. This graph provides a visual means of identifying optimal
 performance in terms of a trade-off between compute and memory
 cost. We can also identify where the current code is under the
-``roof'' of the graph to determine whether the code is compute-bound
+``roof'' of the graph, to determine whether the code is compute-bound
 or memory-bound, helping to focus optimisation and parallelization
-efforts. Here is the roofline model for Jacobi running on BlueCrystal:
+efforts. Here is the roofline model for BlueCrystal:
 
 \ldots
 
+Taking the Jacobi OI of 0.25, it is clear this figure lies way to the
+left of the \(x\)-axis and is extremely memory bandwidth-bound.
+
 \subsection{Adding Pragmas}
-parallel for loop
-look at toy code
+Now on to the parallelisation itself. The most obvious thing to do
+initially is to turn the \texttt{for} loops into parallel \texttt{for}
+loops. This can be done with the pragma \ldots
+
+Several loops are available for parallelisation: \ldots
 
 \subsection{Profiling}
-gperftools, tau
+To check the results of adding these OpenMP pragmas, profiling is
+necessary to get a better idea of exactly what the code is
+doing. \texttt{Tau} is a good profiler for multi-threaded code. The
+\texttt{Tau} output for the code after a quick and dirty
+parallelisation is:
+
+\ldots
+
+gperftools?
 
 \subsection{Cache coherency/false sharing}
 Reduction
 
 \subsection{Reprofiling}
-Overhead of parallel
+After the above cleaning up the parallelisation, the code was
+re-profiled and the runtimes were now W/X/Y/Z.
+
+Now is a good time to mention the overhead of parallelisation. Clearly
+the run times have not been decreasing in a direct relationship with
+the increasing number of cores (i.e. when using 4 cores instead of 1,
+the code is not 4 times faster). This is because parallelisation of
+code introduces some overhead with regards to thread
+management. Because the code is now more complex and things like
+memory conflicts and thread lifecycles must be managed, the
+performance gain is not directly related to the increase in processing power.
 
 \subsection{Libraries, BLAS, NAG C}
-Seven dwarves
+According to the ``seven dwarves'' paper (REFERENCE), the vast
+majority of code executed in HPC falls into one of seven
+categories. This concept is useful because knwoing which of the
+``dwarves'' a piece of code is, may mean that historically, similar
+code has been dealt with before. Looking at these past examples may
+provide help on how to better solve your problem.
+
+The Jacobi solver falls into the ``dense linear algebra''
+category. From research, the BLAS and NAG C libraries are applicable
+to this category of HPC. These libraries contain many common mathematical
+functions, written in a highly optimised manner - for example, matrix
+manipulation. These libraries were tested in the parallel code where
+appropriate, and the resulting times after swapping home-grown code
+for the library code was W/X/Y/Z.
 
 \subsection{Re-testing compiler}
-Sometimes compiler optimisations can be arbitrary, worth checking flags again
+Compiler optimisations can be somewhat of a mystery. The complexity of
+modern compilers means their behaviour is not always predictable in
+advance. Sometimes, less agressive optimisation flags can be faster
+than more aggressive flags, for example.
+
+Testing of the following compiler flags was undertaken after
+parallelisation to check behaviour:
+
+\begin{itemize}
+\item Optimisation flags \texttt{-O, -O2, -O3}: 
+\item 
+\end{itemize}
 
 \section{Conclusion}
+Overall,
+
 \subsection{Going Further - Scaling}
 One final useful thing to know is how well a piece of code will scale
 with further parallelization. Testing the Jacobi algorithm on a growing number of
