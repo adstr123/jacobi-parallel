@@ -43,7 +43,7 @@ void parse_arguments(int argc, char *argv[]);
 int run(float *A, float *b, float *x, float *xtmp)
 {
   //ProfilerStart("jgperf.txt");
-  int itr;
+  int itr, skip_count;
   int row, col;
   double dot;
   double diff;
@@ -58,28 +58,39 @@ int run(float *A, float *b, float *x, float *xtmp)
     for (row = 0; row < N; row++)
     {
       dot = 0.0;
-      for (col = 0; col < N; col++)
-			{
-				if (row != col)
-				{
-					dot += A[row*N + col] * x[col];
-				}
+      skip_count = N;
+      /*for (col = 0; col < N; col++)
+      {
+	if (row != col)
+	{
+	  dot += A[row*N + col] * x[col];
+	}
+      }*/
+
+      for (col = 0; col < row; col++)
+      {
+	dot += A[row*N + col] * x[col];
       }
+      for (col = (row + 1); col < N; col++)
+      {
+	dot += A[row*N + col] * x[col];
+      }
+
       xtmp[row] = (b[row] - dot) / A[row*N + row];
     }
 
-		/* DEBUG print xtmp array
-	  printf("Iteration: %d\n", itr);
+    /* DEBUG print xtmp array
+    printf("Iteration: %d\n", itr);
     printf("xtmp:");
     for (int row = 0; row < N; row++)
-		{
-			for (int col = 0; col < N; col++)
-			{
-				printf("%f ", xtmp[row*N + col]);
+    {
+      for (int col = 0; col < N; col++)
+      {
+	printf("%f ", xtmp[row*N + col]);
       }
       printf("\n");
     }
-		*/
+    */
 	
     // Swap pointers
     ptrtmp = x;
@@ -135,16 +146,16 @@ int main(int argc, char *argv[])
   }
 
   /* DEBUG print fresh array
-	printf("Newly initialised matrix:\n")
+  printf("Newly initialised matrix:\n")
   for (int row = 0; row < N; row++)
   {
-		for (int col = 0; col < N; col++)
-		{
-			printf("%f ", A[row*N + col]);
-		}
-		printf("\n");
-	}
-	*/
+    for (int col = 0; col < N; col++)
+    {
+      printf("%f ", A[row*N + col]);
+    }
+    printf("\n");
+  }
+  */
 
   // Run Jacobi solver
   double solve_start = get_timestamp();
